@@ -12,8 +12,8 @@ SoftwareSerial bluetooth(2,3);
 
 int trig=4;
 int echoRight=5;
-int echoFront=6;
 int echoLeft=7;
+int echoFront=6;
 
 int rightmotor1=9;
 int rightmotor2=10;
@@ -38,9 +38,9 @@ void setup(){
   
   //================ create queue ================
   char message[4];
-  frontQueue = xQueueCreate(5,sizeof(message));
-  rightQueue = xQueueCreate(5,sizeof(message));
-  leftQueue = xQueueCreate(5,sizeof(message));
+  frontQueue = xQueueCreate(1,sizeof(message));
+  rightQueue = xQueueCreate(1,sizeof(message));
+  leftQueue = xQueueCreate(1,sizeof(message));
   commandQueue = xQueueCreate(5,sizeof(message));
   //============================================
 
@@ -60,14 +60,6 @@ void start(void *param){
   int rightspace;
   int frontspace;
   while(1){
-    //====== get space from queue ==========
-    xQueueReceive(rightQueue, num, 50);
-    rightspace = atoi(num);
-    xQueueReceive(frontQueue, num, 50);
-    frontspace = atoi(num);
-    xQueueReceive(leftQueue, num, 50);
-    leftspace = atoi(num);
-    //======================================
     
     //===== get command from queue =========
     char cmd[4];
@@ -77,26 +69,31 @@ void start(void *param){
     //======== L398N Controller ============
     switch(cmd[0]){
       case '1':
-        if(frontspace>25){
-          Serial.println(1);  
+        xQueuePeek(frontQueue, num, ( TickType_t )0);
+        frontspace = atoi(num);
+        Serial.println(frontspace);
+        if(frontspace>40){
           front(); 
-        }else Serial.println(0);
+        }else stp();
         break;
       case '2':
-        //Serial.println(2);  
         back();
         break;
       case '3':
+        xQueuePeek(leftQueue, num, ( TickType_t )0);
+        leftspace = atoi(num);
+        Serial.println(leftspace);
         if(leftspace>25){
-          Serial.println(3);
-          left();  
-        }else Serial.println(0);
+          left();    
+        }else stp();
         break;
       case '4':
+        xQueuePeek(rightQueue, num, ( TickType_t )0);
+        rightspace = atoi(num);
+        Serial.println(rightspace);
         if(rightspace>25){
-          Serial.println(4); 
-          right();  
-        }else Serial.println(0);
+          right();
+        }else stp();
         break;
       default:
         stp();
@@ -156,7 +153,7 @@ void hdsr04(void *param){
 //    Serial.println(distance1);
     sprintf(message,"%d",distance1);
     if(distance1>0){
-      xQueueSend(rightQueue,message,10);
+      xQueueOverwrite(rightQueue,message);
     }
   
     vTaskDelay(20/portTICK_PERIOD_MS);
@@ -174,7 +171,7 @@ void hdsr04(void *param){
 //    Serial.println(distance2);
     sprintf(message,"%d",distance2);
     if(distance2>0){
-      xQueueSend(frontQueue,message,10);
+      xQueueOverwrite(frontQueue,message);
     }
     vTaskDelay(20/portTICK_PERIOD_MS);
     // left
@@ -189,7 +186,7 @@ void hdsr04(void *param){
 //    Serial.println(distance3);
     sprintf(message,"%d",distance3);
     if(distance3>0){
-      xQueueSend(leftQueue,message,10);
+      xQueueOverwrite(leftQueue,message);
     }
     vTaskDelay(20/portTICK_PERIOD_MS);
   }
@@ -209,15 +206,15 @@ void front(){
 }
 void right(){
   digitalWrite(leftmotor1, LOW);
+  digitalWrite(leftmotor2, HIGH);
+  digitalWrite(rightmotor1, HIGH);
+  digitalWrite(rightmotor2, LOW);
+}
+void left(){
+  digitalWrite(leftmotor1, HIGH);
   digitalWrite(leftmotor2, LOW);
   digitalWrite(rightmotor1, LOW);
   digitalWrite(rightmotor2, HIGH);
-}
-void left(){
-  digitalWrite(leftmotor1, LOW);
-  digitalWrite(leftmotor2, HIGH);
-  digitalWrite(rightmotor1, LOW);
-  digitalWrite(rightmotor2, LOW);
 }
 
 void stp(){

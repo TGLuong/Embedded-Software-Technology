@@ -41,7 +41,7 @@ void setup(){
   frontQueue = xQueueCreate(1,sizeof(message));
   rightQueue = xQueueCreate(1,sizeof(message));
   leftQueue = xQueueCreate(1,sizeof(message));
-  commandQueue = xQueueCreate(5,sizeof(message));
+  commandQueue = xQueueCreate(1,sizeof(message));
   //============================================
 
   //============== create task ===================
@@ -63,7 +63,7 @@ void start(void *param){
     
     //===== get command from queue =========
     char cmd[4];
-    xQueueReceive(commandQueue,cmd,50);
+    xQueuePeek(commandQueue,cmd,(TickType_t)0);
     //======================================
     
     //======== L398N Controller ============
@@ -95,8 +95,11 @@ void start(void *param){
           right();
         }else stp();
         break;
-      default:
+       case '5':
         stp();
+        break;
+      default:
+        break;
     }
     //=====================================
     vTaskDelay(20/ portTICK_PERIOD_MS);
@@ -111,19 +114,20 @@ void command(void *param){
       cmd = bluetooth.read();
 //      Serial.write(cmd);
       if(cmd=='1'){
-        xQueueSend(commandQueue,"1",50);
+        xQueueOverwrite(commandQueue,"1");
       }else
       if(cmd=='2'){
-        xQueueSend(commandQueue,"2",50); 
+        xQueueOverwrite(commandQueue,"2"); 
       }else
       if(cmd=='3'){
-        xQueueSend(commandQueue,"3",50); 
+        xQueueOverwrite(commandQueue,"3"); 
       }else
       if(cmd=='4'){
-        xQueueSend(commandQueue,"4",50); 
+        xQueueOverwrite(commandQueue,"4"); 
+      }else
+      if(cmd=='5'){
+        xQueueOverwrite(commandQueue,"5");
       }
-    }else{
-      xQueueSend(commandQueue,"nt",50);
     }
     vTaskDelay(40/ portTICK_PERIOD_MS);
   }

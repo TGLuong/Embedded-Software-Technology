@@ -15,7 +15,9 @@ int echoRight=5;
 int echoLeft=7;
 int echoFront=6;
 
-int rightmotor1=9;
+int speedPin = 9;
+
+int rightmotor1=8;
 int rightmotor2=10;
 int leftmotor1=11;
 int leftmotor2=12;
@@ -30,20 +32,22 @@ void setup(){
   pinMode(echoRight, INPUT);
   pinMode(echoFront, INPUT);
   pinMode(echoLeft, INPUT);
+  pinMode(speedPin, OUTPUT);
   pinMode(rightmotor1, OUTPUT);
   pinMode(rightmotor2, OUTPUT);
   pinMode(leftmotor1, OUTPUT);
   pinMode(leftmotor2, OUTPUT);
   //===========================================
+
+  analogWrite(speedPin,250);
   
   //================ create queue ================
-  char message[4];
-  frontQueue = xQueueCreate(1,sizeof(message));
-  rightQueue = xQueueCreate(1,sizeof(message));
-  leftQueue = xQueueCreate(1,sizeof(message));
-  commandQueue = xQueueCreate(1,sizeof(message));
+  frontQueue = xQueueCreate(1,sizeof(int));
+  rightQueue = xQueueCreate(1,sizeof(int));
+  leftQueue = xQueueCreate(1,sizeof(int));
+  commandQueue = xQueueCreate(1,sizeof(int));
   //============================================
-
+  
   //============== create task ===================
   xTaskCreate(hdsr04,"khoangcach", 200,NULL,1,NULL);
   xTaskCreate(start,"chay", 200,NULL,1,NULL);
@@ -55,23 +59,21 @@ void setup(){
 void loop(){}
 
 void start(void *param){
-  char num[4];
   int leftspace;
   int rightspace;
   int frontspace;
   while(1){
     
     //===== get command from queue =========
-    char cmd[4];
-    xQueuePeek(commandQueue,cmd,(TickType_t)0);
+    int cmd;
+    xQueuePeek(commandQueue,&cmd,(TickType_t)0);
+    
     //======================================
     
     //======== L398N Controller ============
-    switch(cmd[0]){
+    switch(cmd){
       case '1':
-        xQueuePeek(frontQueue, num, ( TickType_t )0);
-        frontspace = atoi(num);
-        Serial.println(frontspace);
+        xQueuePeek(frontQueue, &frontspace, ( TickType_t )0);
         if(frontspace>40){
           front(); 
         }else stp();
@@ -80,17 +82,13 @@ void start(void *param){
         back();
         break;
       case '3':
-        xQueuePeek(leftQueue, num, ( TickType_t )0);
-        leftspace = atoi(num);
-        Serial.println(leftspace);
+        xQueuePeek(leftQueue, &leftspace, ( TickType_t )0);
         if(leftspace>25){
           left();    
         }else stp();
         break;
       case '4':
-        xQueuePeek(rightQueue, num, ( TickType_t )0);
-        rightspace = atoi(num);
-        Serial.println(rightspace);
+        xQueuePeek(rightQueue, &rightspace, ( TickType_t )0);
         if(rightspace>25){
           right();
         }else stp();
@@ -110,32 +108,19 @@ void start(void *param){
 void command(void *param){
   while(1){
     if(bluetooth.available()){
-      char cmd;
+      int cmd;
       cmd = bluetooth.read();
-//      Serial.write(cmd);
-      if(cmd=='1'){
-        xQueueOverwrite(commandQueue,"1");
-      }else
-      if(cmd=='2'){
-        xQueueOverwrite(commandQueue,"2"); 
-      }else
-      if(cmd=='3'){
-        xQueueOverwrite(commandQueue,"3"); 
-      }else
-      if(cmd=='4'){
-        xQueueOverwrite(commandQueue,"4"); 
-      }else
-      if(cmd=='5'){
-        xQueueOverwrite(commandQueue,"5");
+      if(cmd< 60 && cmd >40){
+        xQueueOverwrite(commandQueue,&cmd);
+      }else if (cmd>=100 && cmd<=250){
+        analogWrite(speedPin, cmd);
       }
     }
     vTaskDelay(40/ portTICK_PERIOD_MS);
   }
 }
 
-
 void hdsr04(void *param){
-  char message[4];
   unsigned long duration1;
   unsigned long duration2;
   unsigned long duration3;
@@ -153,13 +138,9 @@ void hdsr04(void *param){
     digitalWrite(trig,LOW);
     duration1 = pulseIn(echoRight,HIGH);
     distance1 = int(duration1/2/29.412);
-//    Serial.print("1: ");
-//    Serial.println(distance1);
-    sprintf(message,"%d",distance1);
     if(distance1>0){
-      xQueueOverwrite(rightQueue,message);
+      xQueueOverwrite(rightQueue,&distance1);
     }
-  
     vTaskDelay(20/portTICK_PERIOD_MS);
     
     // front hc-sr04
@@ -171,13 +152,11 @@ void hdsr04(void *param){
     digitalWrite(trig,LOW);
     duration2 = pulseIn(echoFront,HIGH);
     distance2 = int(duration2/2/29.412);
-//    Serial.print("2: ");
-//    Serial.println(distance2);
-    sprintf(message,"%d",distance2);
     if(distance2>0){
-      xQueueOverwrite(frontQueue,message);
+      xQueueOverwrite(frontQueue,&distance2);
     }
     vTaskDelay(20/portTICK_PERIOD_MS);
+    
     // left
     digitalWrite(trig,LOW);
     vTaskDelay(2/portTICK_PERIOD_MS);
@@ -186,11 +165,8 @@ void hdsr04(void *param){
     digitalWrite(trig,LOW);
     duration3 = pulseIn(echoLeft,HIGH);
     distance3 = int(duration3/2/29.412);
-//    Serial.print("3: ");
-//    Serial.println(distance3);
-    sprintf(message,"%d",distance3);
     if(distance3>0){
-      xQueueOverwrite(leftQueue,message);
+      xQueueOverwrite(leftQueue,&distance3);
     }
     vTaskDelay(20/portTICK_PERIOD_MS);
   }

@@ -10,8 +10,12 @@ import android.os.Handler;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.material.slider.Slider;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -39,7 +43,11 @@ public class MainActivity<count> extends AppCompatActivity {
       socket = bd.createRfcommSocketToServiceRecord(mUUID);
       System.out.println(socket);
       socket.connect();
-      System.out.println(socket.isConnected());
+      if(socket.isConnected()){
+        Toast.makeText(this, "Connected successfully!", Toast.LENGTH_SHORT).show();
+      }else{
+        Toast.makeText(this, "Connected fail!", Toast.LENGTH_SHORT).show();
+      }
       out = socket.getOutputStream();
     } catch (IOException e) {
       e.printStackTrace();
@@ -49,9 +57,14 @@ public class MainActivity<count> extends AppCompatActivity {
     Button downButton = findViewById(R.id.down_button);
     Button leftButton = findViewById(R.id.left_button);
     Button rightButton = findViewById(R.id.right_button);
+    Slider slider = findViewById(R.id.speed_slider);
     upButton.setOnTouchListener(new View.OnTouchListener() {
       @Override
       public boolean onTouch(View view, MotionEvent motionEvent) {
+        if(!socket.isConnected()){
+          Toast.makeText(MainActivity.this, "Please Connected!", Toast.LENGTH_SHORT).show();
+          return false;
+        }
         int mask = motionEvent.getActionMasked();
         switch (mask){
           case MotionEvent.ACTION_DOWN:
@@ -75,6 +88,10 @@ public class MainActivity<count> extends AppCompatActivity {
     downButton.setOnTouchListener(new View.OnTouchListener() {
       @Override
       public boolean onTouch(View view, MotionEvent motionEvent) {
+        if(!socket.isConnected()){
+          Toast.makeText(MainActivity.this, "Please Connected!", Toast.LENGTH_SHORT).show();
+          return false;
+        }
         int mask = motionEvent.getActionMasked();
         switch (mask){
           case MotionEvent.ACTION_DOWN:
@@ -98,6 +115,10 @@ public class MainActivity<count> extends AppCompatActivity {
     leftButton.setOnTouchListener(new View.OnTouchListener() {
       @Override
       public boolean onTouch(View view, MotionEvent motionEvent) {
+        if(!socket.isConnected()){
+          Toast.makeText(MainActivity.this, "Please Connected!", Toast.LENGTH_SHORT).show();
+          return false;
+        }
         try {
           int mask = motionEvent.getActionMasked();
           switch (mask){
@@ -117,6 +138,10 @@ public class MainActivity<count> extends AppCompatActivity {
     rightButton.setOnTouchListener(new View.OnTouchListener() {
       @Override
       public boolean onTouch(View view, MotionEvent motionEvent) {
+        if(!socket.isConnected()){
+          Toast.makeText(MainActivity.this, "Please Connected!", Toast.LENGTH_SHORT).show();
+          return false;
+        }
         try{
           int mask = motionEvent.getActionMasked();
           switch (mask){
@@ -131,6 +156,20 @@ public class MainActivity<count> extends AppCompatActivity {
           e.printStackTrace();
         }
         return false;
+      }
+    });
+    slider.addOnChangeListener(new Slider.OnChangeListener() {
+      @Override
+      public void onValueChange(@NonNull Slider slider, float value, boolean fromUser) {
+        if(!socket.isConnected()){
+          Toast.makeText(MainActivity.this, "Please Connected!", Toast.LENGTH_SHORT).show();
+          return;
+        }
+        try {
+          out.write((int)value);
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
       }
     });
   }
